@@ -757,6 +757,13 @@ def admin_eliminar_usuario(id):
     return redirect(url_for('admin_usuarios'))
 
 
+# Auto-seed al iniciar en producción
+with app.app_context():
+    db.create_all()
+    from database import Producto
+    if Producto.query.count() == 0:
+        exec(open('seed.py').read())
+
 if __name__ == '__main__':
     app.run(debug=True)
 
