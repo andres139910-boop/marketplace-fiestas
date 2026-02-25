@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Notificaciones — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="notif-container">
+
+    <div class="notif-header">
+        <h2>🔔 Mis Notificaciones</h2>
+        <span class="notif-count">{{ notificaciones|length }}</span>
+    </div>
+
+    {% if notificaciones %}
+    <div class="notif-lista">
+        {% for notif in notificaciones %}
+        <div class="notif-item {% if not notif.leida %}no-leida{% endif %} tipo-{{ notif.tipo }}">
+            <div class="notif-icono">
+                {% if notif.tipo == 'venta' %}🎉
+                {% elif notif.tipo == 'resena' %}⭐
+                {% elif notif.tipo == 'info' %}ℹ️
+                {% else %}🔔{% endif %}
+            </div>
+            <div class="notif-contenido">
+                <p class="notif-mensaje">{{ notif.mensaje }}</p>
+                <span class="notif-fecha">
+                    {{ notif.fecha.strftime('%d/%m/%Y %H:%M') }}
+                </span>
+            </div>
+            {% if notif.url %}
+            <a href="{{ notif.url }}" class="notif-link">Ver →</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="no-resultados">
+        <div style="font-size:3rem;">🔕</div>
+        <h3>No tienes notificaciones</h3>
+        <p>Aquí aparecerán tus ventas y reseñas.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+.notif-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.notif-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.notif-header h2 { font-size: 1.6rem; color: var(--oscuro); }
+
+.notif-count {
+    background: var(--primario);
+    color: white;
+    padding: 0.2rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.notif-lista { display: flex; flex-direction: column; gap: 0.8rem; }
+
+.notif-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: white;
+    padding: 1.2rem;
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    border-left: 4px solid #e0e0e0;
+    transition: var(--transicion);
+}
+
+.notif-item:hover { transform: translateX(4px); }
+
+.notif-item.no-leida { border-left-color: var(--primario); background: #fff5f5; }
+.notif-item.tipo-venta { border-left-color: #27ae60; }
+.notif-item.tipo-resena { border-left-color: #f39c12; }
+
+.notif-icono { font-size: 1.5rem; flex-shrink: 0; }
+
+.notif-contenido { flex: 1; }
+
+.notif-mensaje { font-size: 0.95rem; color: var(--oscuro); margin-bottom: 0.2rem; }
+
+.notif-fecha { font-size: 0.78rem; color: #aaa; }
+
+.notif-link {
+    padding: 0.4rem 0.9rem;
+    background: var(--gris);
+    color: var(--primario);
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: var(--transicion);
+}
+
+.notif-link:hover { background: var(--primario); color: white; }
+</style>
+{% endblock %}

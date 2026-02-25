@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}Mi Perfil — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="perfil-container">
+
+    <!-- Header del perfil -->
+    <div class="perfil-header">
+        <div class="perfil-avatar">
+            {{ current_user.nombre[0].upper() }}
+        </div>
+        <div class="perfil-datos">
+            <h2>{{ current_user.nombre }}</h2>
+            <p>{{ current_user.email }}</p>
+            {% if current_user.bio %}
+            <p class="perfil-bio">{{ current_user.bio }}</p>
+            {% endif %}
+            <p class="perfil-fecha">
+                🗓️ Vendedor desde
+                {{ current_user.fecha_registro.strftime('%B %Y') }}
+            </p>
+        </div>
+        <div class="perfil-acciones">
+            <a href="{{ url_for('agregar_producto') }}" class="btn-agregar-perfil">
+                <i class="fas fa-plus"></i> Publicar producto
+            </a>
+            <a href="{{ url_for('editar_perfil') }}" class="btn-editar-perfil">
+                ⚙️ Editar perfil
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="perfil-tabs">
+        <button class="tab-btn activo" onclick="mostrarTab('productos')">
+            🛍️ Mis productos ({{ mis_productos|length }})
+        </button>
+        <button class="tab-btn" onclick="mostrarTab('favoritos')">
+            ❤️ Favoritos ({{ mis_favoritos|length }})
+        </button>
+    </div>
+
+    <!-- Tab: Productos -->
+    <div id="tab-productos" class="tab-contenido activo">
+        {% if mis_productos %}
+        <div class="productos-grid">
+            {% for producto in mis_productos %}
+            <div class="producto-card visible">
+
+                <div class="producto-imagen">
+                    <a href="{{ url_for('detalle_producto', id=producto.id) }}">
+                        <img src="{{ url_for('static', filename='images/' + producto.imagen) }}"
+                             alt="{{ producto.nombre }}"
+                             onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+                    </a>
+                    <span class="badge-categoria">{{ producto.categoria }}</span>
+                    <span class="badge-visitas">👁️ {{ producto.visitas }}</span>
+                </div>
+
+                <div class="producto-info">
+                    <h3 class="producto-nombre">
+                        <a href="{{ url_for('detalle_producto', id=producto.id) }}">
+                            {{ producto.nombre }}
+                        </a>
+                    </h3>
+
+                    <div class="producto-precio-row">
+                        <span class="producto-precio">
+                            ${{ "{:,.0f}".format(producto.precio | float) }} COP
+                        </span>
+                        <span class="producto-stock
+                            {% if producto.stock < 5 %}stock-bajo{% endif %}">
+                            📦 {{ producto.stock }} uds.
+                        </span>
+                    </div>
+
+                    <div class="producto-acciones">
+                        <a href="{{ url_for('editar_producto', id=producto.id) }}"
+                           class="btn-editar">✏️ Editar</a>
+                        <form action="{{ url_for('eliminar_producto', id=producto.id) }}"
+                              method="POST"
+                              onsubmit="return confirm('⚠️ ¿Eliminar este producto?')">
+                            <button type="submit" class="btn-eliminar-card">🗑️ Eliminar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="no-resultados">
+            <i class="fas fa-box-open fa-3x"></i>
+            <h3>Aún no tienes productos publicados</h3>
+            <a href="{{ url_for('agregar_producto') }}" class="btn-hero">Publicar ahora</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Tab: Favoritos -->
+    <div id="tab-favoritos" class="tab-contenido">
+        {% if mis_favoritos %}
+        <div class="productos-grid">
+            {% for fav in mis_favoritos %}
+            <div class="producto-card visible">
+                <div class="producto-imagen">
+                    <a href="{{ url_for('detalle_producto', id=fav.producto.id) }}">
+                        <img src="{{ url_for('static', filename='images/' + fav.producto.imagen) }}"
+                             alt="{{ fav.producto.nombre }}"
+                             onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+                    </a>
+                    <span class="badge-categoria">{{ fav.producto.categoria }}</span>
+                </div>
+                <div class="producto-info">
+                    <h3 class="producto-nombre">
+                        <a href="{{ url_for('detalle_producto', id=fav.producto.id) }}">
+                            {{ fav.producto.nombre }}
+                        </a>
+                    </h3>
+                    <div class="producto-precio-row">
+                        <span class="producto-precio">
+                            ${{ "{:,.0f}".format(fav.producto.precio | float) }} COP
+                        </span>
+                    </div>
+                    <a href="{{ url_for('detalle_producto', id=fav.producto.id) }}"
+                       class="btn-carrito-add"
+                       style="text-align:center; text-decoration:none; display:block;">
+                        Ver producto
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-resultados">
+            <div style="font-size:3rem;">💔</div>
+            <h3>No tienes favoritos aún</h3>
+            <a href="{{ url_for('index') }}" class="btn-hero">Explorar productos</a>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<style>
+.perfil-container { max-width: 1100px; margin: 2rem auto; padding: 0 2rem; }
+
+.perfil-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.perfil-avatar {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primario), #FF8E53);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.perfil-datos { flex: 1; }
+.perfil-datos h2 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+.perfil-datos p  { color: #666; font-size: 0.9rem; }
+.perfil-bio      { font-style: italic; color: #888 !important; margin: 0.3rem 0; }
+.perfil-fecha    { color: #aaa !important; font-size: 0.8rem !important; }
+
+.perfil-acciones { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.btn-agregar-perfil {
+    background: var(--secundario);
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radio);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: var(--transicion);
+    text-align: center;
+}
+
+.btn-agregar-perfil:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+.btn-editar-perfil {
+    background: #f0f0f0;
+    color: var(--oscuro);
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radio);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: var(--transicion);
+    text-align: center;
+}
+
+.btn-editar-perfil:hover { background: #e0e0e0; }
+
+/* Tabs */
+.perfil-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 0.7rem 1.5rem;
+    background: none;
+    border: none;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #999;
+    cursor: pointer;
+    transition: var(--transicion);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+}
+
+.tab-btn:hover { color: var(--primario); }
+.tab-btn.activo { color: var(--primario); border-bottom-color: var(--primario); }
+
+.tab-contenido { display: none; }
+.tab-contenido.activo { display: block; }
+
+/* Badge visitas */
+.badge-visitas {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Acciones del producto */
+.producto-acciones {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.btn-editar {
+    flex: 1;
+    padding: 0.6rem;
+    background: var(--secundario);
+    color: white;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-align: center;
+    transition: var(--transicion);
+}
+
+.btn-editar:hover { filter: brightness(1.1); }
+
+.btn-eliminar-card {
+    flex: 1;
+    padding: 0.6rem;
+    background: #fff0f0;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transicion);
+}
+
+.btn-eliminar-card:hover { background: #e74c3c; color: white; }
+
+@media (max-width: 600px) {
+    .perfil-header { flex-direction: column; text-align: center; }
+    .perfil-acciones { width: 100%; }
+    .perfil-tabs { overflow-x: auto; }
+}
+</style>
+
+<script>
+function mostrarTab(tab) {
+    document.querySelectorAll('.tab-contenido').forEach(t => t.classList.remove('activo'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('activo'));
+    document.getElementById(`tab-${tab}`).classList.add('activo');
+    event.target.classList.add('activo');
+}
+</script>
+{% endblock %}
+

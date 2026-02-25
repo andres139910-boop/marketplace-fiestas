@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Página no encontrada — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="error404-container">
+    <div class="error404-content">
+        <div class="error404-numero">404</div>
+        <div class="error404-emoji">🎈</div>
+        <h2>¡Ups! Esta página no existe</h2>
+        <p>Parece que el globo se fue volando con esta página.</p>
+        <div class="error404-botones">
+            <a href="{{ url_for('index') }}" class="btn-hero">
+                🏠 Volver al inicio
+            </a>
+            <a href="javascript:history.back()" class="btn-volver">
+                ← Página anterior
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.error404-container {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+}
+
+.error404-content {
+    max-width: 500px;
+}
+
+.error404-numero {
+    font-size: 8rem;
+    font-weight: 700;
+    color: var(--primario);
+    line-height: 1;
+    opacity: 0.2;
+}
+
+.error404-emoji {
+    font-size: 4rem;
+    margin: -2rem 0 1rem;
+    animation: flotar 2s ease-in-out infinite;
+}
+
+.error404-content h2 {
+    font-size: 1.8rem;
+    color: var(--oscuro);
+    margin-bottom: 0.8rem;
+}
+
+.error404-content p {
+    color: #999;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+.error404-botones {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-volver {
+    padding: 0.8rem 2rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 50px;
+    text-decoration: none;
+    color: var(--oscuro);
+    font-weight: 600;
+    transition: var(--transicion);
+}
+
+.btn-volver:hover { background: #f0f0f0; }
+
+@keyframes flotar {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-15px); }
+}
+</style>
+{% endblock %}

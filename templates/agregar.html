@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Agregar Producto — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>🎁 Publicar Producto</h2>
+    <p class="form-subtitulo">Agrega tu producto al marketplace y llega a más clientes.</p>
+
+    <!-- enctype="multipart/form-data" es OBLIGATORIO para subir archivos/imágenes -->
+    <form method="POST" enctype="multipart/form-data" class="form-producto">
+
+        <div class="form-grupo">
+            <label for="nombre">Nombre del producto *</label>
+            <input type="text" id="nombre" name="nombre" required
+                   placeholder="Ej: Globos metálicos dorados x10">
+        </div>
+
+        <div class="form-grupo">
+            <label for="descripcion">Descripción *</label>
+            <textarea id="descripcion" name="descripcion" required rows="4"
+                      placeholder="Describe tu producto: materiales, tamaño, usos..."></textarea>
+        </div>
+
+        <div class="form-fila">
+            <div class="form-grupo">
+                <label for="precio">Precio (COP) *</label>
+                <input type="number" id="precio" name="precio" required 
+                       min="0" step="100" placeholder="15000">
+            </div>
+            <div class="form-grupo">
+                <label for="stock">Stock disponible *</label>
+                <input type="number" id="stock" name="stock" required 
+                       min="0" placeholder="50">
+            </div>
+        </div>
+
+        <div class="form-grupo">
+            <label for="categoria">Categoría *</label>
+            <select id="categoria" name="categoria" required>
+                <option value="">-- Selecciona una categoría --</option>
+                <option value="globos">🎈 Globos</option>
+                <option value="decoracion">🎀 Decoración</option>
+                <option value="piñatas">🪅 Piñatas</option>
+                <option value="confeti">✨ Confeti y serpentinas</option>
+                <option value="vajilla">🍽️ Vajilla desechable</option>
+                <option value="iluminacion">💡 Iluminación</option>
+                <option value="disfraz">🎭 Disfraces y accesorios</option>
+                <option value="tortas">🎂 Decoración de tortas</option>
+            </select>
+        </div>
+
+        <div class="form-grupo">
+            <label for="imagen">Imagen del producto</label>
+            <!-- El input de tipo file permite seleccionar imágenes -->
+            <input type="file" id="imagen" name="imagen" 
+                   accept="image/png, image/jpeg, image/gif, image/webp">
+            <small>Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB recomendado.</small>
+            <!-- Vista previa de la imagen antes de enviar -->
+            <div id="preview-imagen" class="preview-imagen"></div>
+        </div>
+
+        <button type="submit" class="btn-submit">
+            <i class="fas fa-upload"></i> Publicar Producto
+        </button>
+    </form>
+</div>
+
+<style>
+/* Estilos del formulario */
+.form-container {
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 2.5rem;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.form-container h2 { font-size: 1.8rem; color: #2C3E50; margin-bottom: 0.5rem; }
+.form-subtitulo { color: #666; margin-bottom: 2rem; }
+.form-producto { display: flex; flex-direction: column; gap: 1.2rem; }
+.form-grupo { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.form-grupo label { font-weight: 600; font-size: 0.9rem; color: #2C3E50; }
+
+.form-grupo input,
+.form-grupo textarea,
+.form-grupo select {
+    padding: 0.7rem 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.form-grupo input:focus,
+.form-grupo textarea:focus,
+.form-grupo select:focus {
+    outline: none;
+    border-color: #FF6B6B;
+    box-shadow: 0 0 0 3px rgba(255,107,107,0.15);
+}
+
+.form-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.form-grupo small { color: #999; font-size: 0.8rem; }
+
+.preview-imagen {
+    margin-top: 0.5rem;
+    border-radius: 10px;
+    overflow: hidden;
+    max-height: 200px;
+}
+
+.preview-imagen img { width: 100%; object-fit: cover; }
+
+.btn-submit {
+    padding: 1rem;
+    background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 0.5rem;
+}
+
+.btn-submit:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+@media (max-width: 600px) {
+    .form-fila { grid-template-columns: 1fr; }
+    .form-container { padding: 1.5rem; margin: 1rem; }
+}
+</style>
+{% endblock %}

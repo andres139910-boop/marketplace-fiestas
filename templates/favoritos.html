@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Mis Favoritos — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="favoritos-container">
+
+    <div class="favoritos-header">
+        <h2>❤️ Mis Favoritos</h2>
+        <span class="favoritos-count">{{ productos|length }} productos</span>
+    </div>
+
+    {% if productos %}
+    <div class="productos-grid">
+        {% for producto in productos %}
+        <div class="producto-card visible" id="card-{{ producto.id }}">
+
+            <div class="producto-imagen">
+                <a href="{{ url_for('detalle_producto', id=producto.id) }}">
+                    <img src="{{ url_for('static', filename='images/' + producto.imagen) }}"
+                         alt="{{ producto.nombre }}"
+                         onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+                </a>
+                <span class="badge-categoria">{{ producto.categoria }}</span>
+
+                <!-- Botón favorito -->
+                <button class="btn-favorito activo"
+                        data-id="{{ producto.id }}"
+                        title="Quitar de favoritos">
+                    ❤️
+                </button>
+            </div>
+
+            <div class="producto-info">
+                <h3 class="producto-nombre">
+                    <a href="{{ url_for('detalle_producto', id=producto.id) }}">
+                        {{ producto.nombre }}
+                    </a>
+                </h3>
+
+                <p class="producto-descripcion">
+                    {{ producto.descripcion[:80] }}{% if producto.descripcion|length > 80 %}...{% endif %}
+                </p>
+
+                <div class="producto-precio-row">
+                    <span class="producto-precio">
+                        ${{ "{:,.0f}".format(producto.precio | float) }} COP
+                    </span>
+                    <span class="producto-stock {% if producto.stock < 5 %}stock-bajo{% endif %}">
+                        📦 {{ producto.stock }} uds.
+                    </span>
+                </div>
+
+                {% if producto.stock > 0 %}
+                <form action="{{ url_for('agregar_carrito', producto_id=producto.id) }}" method="POST">
+                    <input type="hidden" name="cantidad" value="1">
+                    <button type="submit" class="btn-carrito-add">
+                        <i class="fas fa-cart-plus"></i> Agregar al carrito
+                    </button>
+                </form>
+                {% else %}
+                <button class="btn-carrito-add deshabilitado" disabled>Sin stock</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="no-resultados">
+        <div style="font-size:4rem;">💔</div>
+        <h3>No tienes favoritos aún</h3>
+        <p>Explora el catálogo y guarda los productos que más te gusten.</p>
+        <a href="{{ url_for('index') }}" class="btn-hero">Ver productos</a>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+.favoritos-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.favoritos-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.favoritos-header h2 { font-size: 1.6rem; color: var(--oscuro); }
+
+.favoritos-count {
+    background: var(--primario);
+    color: white;
+    padding: 0.2rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+</style>
+
+<script>
+document.querySelectorAll('.btn-favorito').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const id   = this.dataset.id;
+        const card = document.getElementById(`card-${id}`);
+
+        fetch(`/favorito/${id}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'removed') {
+                    card.style.transition = 'opacity 0.4s';
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 400);
+                }
+            });
+    });
+});
+</script>
+{% endblock %}

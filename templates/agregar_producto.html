@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Agregar Producto — FiestaShop{% endblock %}
+
+{% block content %}
+<div style="max-width:600px; margin:2rem auto; background:white; padding:2rem; border-radius:16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+    <h2 style="margin-bottom:1.5rem; color: var(--primario);">➕ Agregar Producto</h2>
+
+    <form method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:1rem;">
+
+        <div>
+            <label><strong>Nombre</strong></label>
+            <input type="text" name="nombre" required
+                   style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;">
+        </div>
+
+        <div>
+            <label><strong>Descripción</strong></label>
+            <textarea name="descripcion" rows="3" required
+                      style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;"></textarea>
+        </div>
+
+        <div>
+            <label><strong>Precio (COP)</strong></label>
+            <input type="number" name="precio" min="0" step="100" required
+                   style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;">
+        </div>
+
+        <div>
+            <label><strong>Categoría</strong></label>
+            <input type="text" name="categoria" placeholder="globos, decoracion, vajilla..."
+                   style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;">
+        </div>
+
+        <div>
+            <label><strong>Stock</strong></label>
+            <input type="number" name="stock" min="0" value="0"
+                   style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;">
+        </div>
+
+        <div>
+            <label><strong>Imagen</strong></label>
+            <input type="file" name="imagen" accept=".png,.jpg,.jpeg,.gif,.webp"
+                   style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;">
+        </div>
+
+        <button type="submit" class="btn-carrito-add" style="margin-top:0.5rem;">
+            💾 Guardar Producto
+        </button>
+    </form>
+</div>
+{% endblock %}

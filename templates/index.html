@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}FiestaShop 🎉 — Inicio{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+    <div class="hero-content">
+        <h1>Todo para tu fiesta perfecta 🎉</h1>
+        <p>Globos, decoraciones, piñatas y más. ¡Envío a toda Colombia!</p>
+        <a href="#productos" class="btn-hero">Ver Productos</a>
+    </div>
+</section>
+
+<!-- FILTROS -->
+<section class="filtros" id="productos">
+    <div class="filtros-container">
+        <a href="{{ url_for('index', orden=orden) }}"
+           class="filtro-btn {% if not categoria_filtro %}activo{% endif %}">
+            Todos
+        </a>
+        {% for cat in categorias %}
+        <a href="{{ url_for('index', categoria=cat, orden=orden, q=request.args.get('q','')) }}"
+           class="filtro-btn {% if categoria_filtro == cat %}activo{% endif %}">
+            {{ cat | capitalize }}
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ORDENAMIENTO -->
+<section class="ordenamiento">
+    <div class="orden-container">
+        <span class="orden-label"><i class="fas fa-sort"></i> Ordenar por:</span>
+        <div class="orden-opciones">
+            <a href="{{ url_for('index', orden='recientes', categoria=categoria_filtro, q=request.args.get('q','')) }}"
+               class="orden-btn {% if orden == 'recientes' %}activo{% endif %}">🕐 Más recientes</a>
+            <a href="{{ url_for('index', orden='precio_asc', categoria=categoria_filtro, q=request.args.get('q','')) }}"
+               class="orden-btn {% if orden == 'precio_asc' %}activo{% endif %}">💰 Menor precio</a>
+            <a href="{{ url_for('index', orden='precio_desc', categoria=categoria_filtro, q=request.args.get('q','')) }}"
+               class="orden-btn {% if orden == 'precio_desc' %}activo{% endif %}">💎 Mayor precio</a>
+            <a href="{{ url_for('index', orden='nombre_asc', categoria=categoria_filtro, q=request.args.get('q','')) }}"
+               class="orden-btn {% if orden == 'nombre_asc' %}activo{% endif %}">🔤 A - Z</a>
+            <a href="{{ url_for('index', orden='mas_stock', categoria=categoria_filtro, q=request.args.get('q','')) }}"
+               class="orden-btn {% if orden == 'mas_stock' %}activo{% endif %}">📦 Más stock</a>
+            <a href="{{ url_for('index', orden='mas_vistos', categoria=categoria_filtro, q=request.args.get('q','')) }}"
+               class="orden-btn {% if orden == 'mas_vistos' %}activo{% endif %}">🔥 Más vistos</a>
+        </div>
+    </div>
+</section>
+
+<!-- PRODUCTOS -->
+<section class="productos-seccion">
+    {% if productos.items %}
+    <div class="productos-grid">
+        {% for producto in productos.items %}
+        <div class="producto-card">
+            <div class="producto-imagen">
+                <a href="{{ url_for('detalle_producto', id=producto.id) }}">
+                    <img src="{{ url_for('static', filename='images/' + producto.imagen) }}"
+                         alt="{{ producto.nombre }}"
+                         onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+                </a>
+                <span class="badge-categoria">{{ producto.categoria }}</span>
+
+                <!-- Botón favorito -->
+                {% if current_user.is_authenticated %}
+                <button class="btn-favorito {% if producto.id in favoritos_ids %}activo{% endif %}"
+                        data-id="{{ producto.id }}"
+                        title="{% if producto.id in favoritos_ids %}Quitar favorito{% else %}Agregar favorito{% endif %}">
+                    {% if producto.id in favoritos_ids %}❤️{% else %}🤍{% endif %}
+                </button>
+                {% endif %}
+            </div>
+
+            <div class="producto-info">
+                <h3 class="producto-nombre">
+                    <a href="{{ url_for('detalle_producto', id=producto.id) }}">
+                        {{ producto.nombre }}
+                    </a>
+                </h3>
+
+                <p class="producto-descripcion">
+                    {{ producto.descripcion[:80] }}{% if producto.descripcion|length > 80 %}...{% endif %}
+                </p>
+
+                <div class="producto-precio-row">
+                    <span class="producto-precio">
+                        ${{ "{:,.0f}".format(producto.precio | float) }} COP
+                    </span>
+                    <span class="producto-stock {% if producto.stock < 5 %}stock-bajo{% endif %}">
+                        {% if producto.stock > 0 %}📦 {{ producto.stock }}{% else %}❌ Agotado{% endif %}
+                    </span>
+                </div>
+
+                {% if producto.stock > 0 %}
+                <form action="{{ url_for('agregar_carrito', producto_id=producto.id) }}" method="POST">
+                    <input type="hidden" name="cantidad" value="1">
+                    <button type="submit" class="btn-carrito-add">
+                        <i class="fas fa-cart-plus"></i> Agregar al carrito
+                    </button>
+                </form>
+                {% else %}
+                <button class="btn-carrito-add deshabilitado" disabled>Sin stock</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- PAGINACIÓN -->
+    <div class="paginacion">
+        {% if productos.has_prev %}
+        <a href="{{ url_for('index', page=productos.prev_num, categoria=categoria_filtro, orden=orden, q=request.args.get('q','')) }}"
+           class="pagina-btn">« Anterior</a>
+        {% endif %}
+
+        {% for page_num in productos.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+            <a href="{{ url_for('index', page=page_num, categoria=categoria_filtro, orden=orden, q=request.args.get('q','')) }}"
+               class="pagina-btn {% if productos.page == page_num %}activo{% endif %}">
+                {{ page_num }}
+            </a>
+            {% else %}
+            <span class="puntos">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if productos.has_next %}
+        <a href="{{ url_for('index', page=productos.next_num, categoria=categoria_filtro, orden=orden, q=request.args.get('q','')) }}"
+           class="pagina-btn">Siguiente »</a>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <div class="no-resultados">
+        <i class="fas fa-box-open fa-3x"></i>
+        <h3>No se encontraron productos</h3>
+        <p>Intenta con otra búsqueda o categoría.</p>
+        <a href="{{ url_for('index') }}" class="btn-hero">Ver todos</a>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+document.querySelectorAll('.btn-favorito').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const id = this.dataset.id;
+        fetch(`/favorito/${id}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'added') {
+                    this.classList.add('activo');
+                    this.textContent = '❤️';
+                    this.title = 'Quitar favorito';
+                } else if (data.status === 'removed') {
+                    this.classList.remove('activo');
+                    this.textContent = '🤍';
+                    this.title = 'Agregar favorito';
+                }
+            });
+    });
+});
+</script>
+{% endblock %}

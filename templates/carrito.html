@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Mi Carrito — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="carrito-container">
+    <h2>🛒 Mi Carrito</h2>
+
+    {% if items %}
+    <div class="carrito-layout">
+
+        <!-- Lista de productos en el carrito -->
+        <div class="carrito-items">
+            {% for item in items %}
+            <div class="carrito-item">
+                <img src="{{ url_for('static', filename='images/' + item.producto.imagen) }}"
+                     alt="{{ item.producto.nombre }}"
+                     onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+
+                <div class="carrito-item-info">
+                    <h4>{{ item.producto.nombre }}</h4>
+                    <p class="carrito-categoria">{{ item.producto.categoria }}</p>
+                    <!-- ✅ FIX 1 y 2: usa precio_unitario guardado convertido a float -->
+                    <p class="carrito-precio-unit">
+                        ${{ "{:,.0f}".format(item.precio_unitario | float) }} COP / unidad
+                    </p>
+                </div>
+
+                <div class="carrito-item-controls">
+                    <span class="carrito-cantidad">Cantidad: {{ item.cantidad }}</span>
+                    <!-- ✅ FIX 1 y 2: subtotal con precio_unitario guardado -->
+                    <span class="carrito-subtotal">
+                        Subtotal: <strong>
+                            ${{ "{:,.0f}".format(item.precio_unitario | float * item.cantidad) }} COP
+                        </strong>
+                    </span>
+                    <!-- ✅ FIX 4: confirmación antes de eliminar -->
+                    <form action="{{ url_for('eliminar_carrito', item_id=item.id) }}" method="POST"
+                          onsubmit="return confirm('¿Eliminar este producto del carrito?')">
+                        <button type="submit" class="btn-eliminar">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Resumen del pedido -->
+        <div class="carrito-resumen">
+            <h3>Resumen del pedido</h3>
+            <div class="resumen-linea">
+                <span>Subtotal</span>
+                <span>${{ "{:,.0f}".format(total) }} COP</span>
+            </div>
+            <div class="resumen-linea">
+                <span>Envío</span>
+                <span class="envio-gratis">¡Gratis! 🚚</span>
+            </div>
+            <hr>
+            <div class="resumen-total">
+                <span>Total</span>
+                <span>${{ "{:,.0f}".format(total) }} COP</span>
+            </div>
+
+            <!-- ✅ FIX 3: botón deshabilitado hasta implementar pago -->
+            <button class="btn-pagar" disabled title="Próximamente disponible">
+                <i class="fas fa-credit-card"></i> Próximamente: Pago en línea
+            </button>
+
+            <a href="{{ url_for('index') }}" class="btn-seguir">
+                ← Seguir comprando
+            </a>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="carrito-vacio">
+        <i class="fas fa-shopping-cart fa-4x"></i>
+        <h3>Tu carrito está vacío</h3>
+        <p>¡Agrega productos y empieza a planear tu fiesta!</p>
+        <a href="{{ url_for('index') }}" class="btn-hero">Ver productos</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.carrito-container { max-width: 1100px; margin: 2rem auto; padding: 0 2rem; }
+.carrito-container h2 { font-size: 1.8rem; margin-bottom: 1.5rem; }
+
+.carrito-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 2rem;
+    align-items: start;
+}
+
+.carrito-item {
+    display: flex;
+    gap: 1rem;
+    background: white;
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.carrito-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.carrito-item-info { flex: 1; }
+.carrito-item-info h4 { font-weight: 600; margin-bottom: 0.2rem; }
+.carrito-categoria { font-size: 0.8rem; color: #999; }
+.carrito-precio-unit { color: #FF6B6B; font-weight: 600; }
+
+.carrito-item-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+}
+
+.carrito-cantidad { font-size: 0.9rem; color: #555; }
+.carrito-subtotal { font-size: 0.9rem; }
+
+.btn-eliminar {
+    background: #fff0f0;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+    padding: 0.3rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-eliminar:hover { background: #e74c3c; color: white; }
+
+.carrito-resumen {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    position: sticky;
+    top: 80px;
+}
+
+.carrito-resumen h3 { margin-bottom: 1rem; }
+
+.resumen-linea {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+    font-size: 0.95rem;
+}
+
+.envio-gratis { color: #27ae60; font-weight: 600; }
+
+hr { margin: 1rem 0; border: none; border-top: 1px solid #eee; }
+
+.resumen-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #FF6B6B;
+    margin-bottom: 1.2rem;
+}
+
+.btn-pagar {
+    width: 100%;
+    padding: 0.9rem;
+    background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 0.8rem;
+    transition: all 0.3s;
+}
+
+/* ✅ FIX 3: estilo visual para botón deshabilitado */
+.btn-pagar:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+}
+
+.btn-pagar:not(:disabled):hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.btn-seguir {
+    display: block;
+    text-align: center;
+    color: #666;
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.btn-seguir:hover { background: #f5f5f5; }
+
+.carrito-vacio {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #999;
+}
+
+.carrito-vacio h3 { margin: 1rem 0 0.5rem; color: #2C3E50; }
+
+@media (max-width: 768px) {
+    .carrito-layout { grid-template-columns: 1fr; }
+    .carrito-item-controls { align-items: flex-start; }
+}
+</style>
+{% endblock %}

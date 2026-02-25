@@ -1,0 +1,514 @@
+{% extends 'base.html' %}
+{% block title %}{{ producto.nombre }} — FiestaShop{% endblock %}
+
+{% block content %}
+<div class="detalle-container">
+
+    <div class="breadcrumb">
+        <a href="{{ url_for('index') }}">Inicio</a>
+        <span>›</span>
+        <a href="{{ url_for('index', categoria=producto.categoria) }}">
+            {{ producto.categoria | capitalize }}
+        </a>
+        <span>›</span>
+        <span>{{ producto.nombre }}</span>
+    </div>
+
+    <div class="detalle-layout">
+
+        <div class="detalle-imagen">
+            <img src="{{ url_for('static', filename='images/' + producto.imagen) }}"
+                 alt="{{ producto.nombre }}"
+                 onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+            <span class="badge-categoria">{{ producto.categoria | capitalize }}</span>
+            <span class="detalle-visitas">👁️ {{ producto.visitas }} visitas</span>
+        </div>
+
+        <div class="detalle-info">
+            <h1 class="detalle-nombre">{{ producto.nombre }}</h1>
+
+            <!-- Promedio de reseñas -->
+            <div class="detalle-rating">
+                {% set promedio = producto.promedio_resenas() %}
+                {% for i in range(1, 6) %}
+                    {% if i <= promedio %}⭐{% else %}☆{% endif %}
+                {% endfor %}
+                <span class="rating-numero">
+                    {{ promedio }} ({{ producto.resenas | length }} reseñas)
+                </span>
+            </div>
+
+            <p class="detalle-precio">
+                ${{ "{:,.0f}".format(producto.precio | float) }} COP
+            </p>
+
+            <div class="detalle-stock">
+                {% if producto.stock > 10 %}
+                    <span class="stock-ok">✅ En stock ({{ producto.stock }} disponibles)</span>
+                {% elif producto.stock > 0 %}
+                    <span class="stock-bajo">⚠️ ¡Últimas {{ producto.stock }} unidades!</span>
+                {% else %}
+                    <span class="stock-agotado">❌ Agotado</span>
+                {% endif %}
+            </div>
+
+            <div class="detalle-descripcion">
+                <h3>Descripción</h3>
+                <p>{{ producto.descripcion }}</p>
+            </div>
+
+            {% if producto.stock > 0 %}
+            <form action="{{ url_for('agregar_carrito', producto_id=producto.id) }}"
+                  method="POST" class="detalle-form">
+                <div class="cantidad-selector">
+                    <label>Cantidad:</label>
+                    <div class="cantidad-controls">
+                        <button type="button" id="btn-menos">−</button>
+                        <input type="number" name="cantidad" id="cantidad"
+                               value="1" min="1" max="{{ producto.stock }}" readonly>
+                        <button type="button" id="btn-mas">+</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-carrito-add detalle-btn-carrito">
+                    <i class="fas fa-cart-plus"></i> Agregar al carrito
+                </button>
+            </form>
+            {% else %}
+            <button class="btn-carrito-add deshabilitado" disabled>❌ Agotado</button>
+            {% endif %}
+
+            {% if current_user.is_authenticated %}
+            <button class="btn-favorito-detalle {% if producto.id in favoritos_ids %}activo{% endif %}"
+                    id="btn-fav" data-id="{{ producto.id }}">
+                {% if producto.id in favoritos_ids %}❤️ En favoritos{% else %}🤍 Agregar a favoritos{% endif %}
+            </button>
+            {% endif %}
+
+            <p class="detalle-fecha">
+                <i class="fas fa-calendar-alt"></i>
+                Publicado el {{ producto.fecha_creado.strftime('%d/%m/%Y') }}
+            </p>
+        </div>
+    </div>
+
+    <!-- ====== RESEÑAS ====== -->
+    <div class="resenas-seccion">
+        <h3>⭐ Reseñas ({{ producto.resenas | length }})</h3>
+
+        <!-- Formulario nueva reseña -->
+        {% if current_user.is_authenticated and not ya_reseno %}
+        <div class="resena-form-container">
+            <h4>Deja tu reseña</h4>
+            <form action="{{ url_for('agregar_resena', id=producto.id) }}" method="POST" class="resena-form">
+
+                <div class="estrellas-selector">
+                    <label>Calificación:</label>
+                    <div class="estrellas" id="estrellas">
+                        {% for i in range(1, 6) %}
+                        <span class="estrella" data-valor="{{ i }}">☆</span>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="calificacion" id="input-calif" value="5">
+                </div>
+
+                <textarea name="contenido" rows="3"
+                          placeholder="Cuéntanos tu experiencia con este producto..."
+                          required></textarea>
+
+                <button type="submit" class="btn-resena-enviar">
+                    Publicar reseña
+                </button>
+            </form>
+        </div>
+        {% elif ya_reseno %}
+        <p class="ya-reseno">✅ Ya dejaste tu reseña para este producto.</p>
+        {% elif not current_user.is_authenticated %}
+        <p class="ya-reseno">
+            <a href="{{ url_for('login') }}">Inicia sesión</a> para dejar una reseña.
+        </p>
+        {% endif %}
+
+        <!-- Lista de reseñas -->
+        {% if producto.resenas %}
+        <div class="resenas-lista">
+            {% for resena in producto.resenas %}
+            <div class="resena-item">
+                <div class="resena-header">
+                    <div class="resena-avatar">
+                        {{ resena.autor.nombre[0].upper() }}
+                    </div>
+                    <div class="resena-meta">
+                        <span class="resena-autor">{{ resena.autor.nombre }}</span>
+                        <span class="resena-estrellas">
+                            {% for i in range(1, 6) %}
+                                {% if i <= resena.calificacion %}⭐{% else %}☆{% endif %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    <span class="resena-fecha">
+                        {{ resena.fecha.strftime('%d/%m/%Y') }}
+                    </span>
+                </div>
+                <p class="resena-contenido">{{ resena.contenido }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="sin-resenas">Sé el primero en dejar una reseña 🎉</p>
+        {% endif %}
+    </div>
+
+    <!-- Relacionados -->
+    {% if relacionados %}
+    <div class="relacionados-seccion">
+        <h3>🎉 También te puede interesar</h3>
+        <div class="relacionados-grid">
+            {% for rel in relacionados %}
+            <div class="producto-card visible">
+                <div class="producto-imagen">
+                    <a href="{{ url_for('detalle_producto', id=rel.id) }}">
+                        <img src="{{ url_for('static', filename='images/' + rel.imagen) }}"
+                             alt="{{ rel.nombre }}"
+                             onerror="this.src='{{ url_for('static', filename='images/default.jpg') }}'">
+                    </a>
+                    <span class="badge-categoria">{{ rel.categoria }}</span>
+                </div>
+                <div class="producto-info">
+                    <h3 class="producto-nombre">
+                        <a href="{{ url_for('detalle_producto', id=rel.id) }}">{{ rel.nombre }}</a>
+                    </h3>
+                    <div class="producto-precio-row">
+                        <span class="producto-precio">
+                            ${{ "{:,.0f}".format(rel.precio | float) }} COP
+                        </span>
+                    </div>
+                    <a href="{{ url_for('detalle_producto', id=rel.id) }}"
+                       class="btn-carrito-add"
+                       style="text-align:center; text-decoration:none; display:block;">
+                        Ver producto
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:2rem;">
+        <a href="{{ url_for('index') }}" class="btn-volver">← Volver al catálogo</a>
+    </div>
+
+</div>
+
+<style>
+.detalle-container { max-width: 1100px; margin: 2rem auto; padding: 0 2rem; }
+
+.breadcrumb {
+    font-size: 0.85rem; color: #999;
+    margin-bottom: 1.5rem;
+    display: flex; gap: 0.5rem;
+    align-items: center; flex-wrap: wrap;
+}
+
+.breadcrumb a { color: var(--primario); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.detalle-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+    background: white;
+    border-radius: var(--radio);
+    padding: 2rem;
+    box-shadow: var(--sombra);
+}
+
+.detalle-imagen { position: relative; border-radius: var(--radio); overflow: hidden; }
+
+.detalle-imagen img {
+    width: 100%; height: 400px;
+    object-fit: cover;
+    border-radius: var(--radio);
+    transition: transform 0.4s ease;
+}
+
+.detalle-imagen img:hover { transform: scale(1.03); }
+
+.detalle-imagen .badge-categoria {
+    position: absolute; top: 15px; left: 15px;
+    background: var(--acento); color: var(--oscuro);
+    padding: 0.3rem 0.9rem; border-radius: 50px;
+    font-size: 0.8rem; font-weight: 600;
+}
+
+.detalle-visitas {
+    position: absolute; bottom: 15px; right: 15px;
+    background: rgba(0,0,0,0.5); color: white;
+    padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 0.8rem;
+}
+
+.detalle-nombre { font-size: 1.8rem; font-weight: 700; color: var(--oscuro); margin-bottom: 0.5rem; }
+
+.detalle-rating {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 1rem; font-size: 1rem;
+}
+
+.rating-numero { font-size: 0.85rem; color: #999; }
+
+.detalle-precio { font-size: 2rem; font-weight: 700; color: var(--primario); margin-bottom: 1rem; }
+
+.detalle-stock { margin-bottom: 1rem; font-size: 0.95rem; font-weight: 500; }
+.stock-ok      { color: #27ae60; }
+.stock-bajo    { color: #e67e22; }
+.stock-agotado { color: #e74c3c; }
+
+.detalle-descripcion {
+    margin-bottom: 1.5rem; padding: 1rem;
+    background: var(--gris); border-radius: 10px;
+}
+
+.detalle-descripcion h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+.detalle-descripcion p  { font-size: 0.95rem; color: #555; line-height: 1.7; }
+
+.detalle-form { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
+
+.cantidad-selector { display: flex; align-items: center; gap: 1rem; }
+.cantidad-selector label { font-weight: 600; font-size: 0.95rem; }
+
+.cantidad-controls {
+    display: flex; align-items: center;
+    border: 2px solid #e0e0e0; border-radius: 10px; overflow: hidden;
+}
+
+.cantidad-controls button {
+    width: 38px; height: 38px;
+    background: var(--gris); border: none;
+    font-size: 1.2rem; cursor: pointer;
+    transition: var(--transicion); font-weight: 700;
+}
+
+.cantidad-controls button:hover { background: var(--primario); color: white; }
+
+.cantidad-controls input {
+    width: 55px; text-align: center;
+    border: none; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0;
+    font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 600;
+    padding: 0.4rem; outline: none;
+}
+
+.detalle-btn-carrito { padding: 0.9rem; font-size: 1rem; }
+
+.btn-favorito-detalle {
+    width: 100%; padding: 0.8rem;
+    background: white; border: 2px solid #e0e0e0;
+    border-radius: var(--radio);
+    font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: var(--transicion); margin-bottom: 1rem;
+}
+
+.btn-favorito-detalle:hover { border-color: var(--primario); color: var(--primario); }
+.btn-favorito-detalle.activo { background: #fff0f0; border-color: var(--primario); color: var(--primario); }
+
+.detalle-fecha { font-size: 0.8rem; color: #aaa; margin-top: 0.5rem; }
+
+/* ====== RESEÑAS ====== */
+.resenas-seccion {
+    margin-top: 3rem;
+    background: white;
+    border-radius: var(--radio);
+    padding: 2rem;
+    box-shadow: var(--sombra);
+}
+
+.resenas-seccion h3 { font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--oscuro); }
+
+.resena-form-container {
+    background: var(--gris);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.resena-form-container h4 { margin-bottom: 1rem; color: var(--oscuro); }
+
+.resena-form { display: flex; flex-direction: column; gap: 1rem; }
+
+/* Selector de estrellas */
+.estrellas-selector { display: flex; align-items: center; gap: 1rem; }
+.estrellas-selector label { font-weight: 600; font-size: 0.9rem; }
+
+.estrellas { display: flex; gap: 0.3rem; }
+
+.estrella {
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: var(--transicion);
+    color: #ddd;
+}
+
+.estrella.activa { color: #f39c12; }
+.estrella:hover  { transform: scale(1.2); }
+
+.resena-form textarea {
+    padding: 0.8rem 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    resize: vertical;
+    outline: none;
+    transition: var(--transicion);
+}
+
+.resena-form textarea:focus { border-color: var(--primario); }
+
+.btn-resena-enviar {
+    padding: 0.7rem 1.5rem;
+    background: linear-gradient(135deg, var(--primario), #FF8E53);
+    color: white; border: none;
+    border-radius: var(--radio);
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600; cursor: pointer;
+    transition: var(--transicion);
+    align-self: flex-start;
+}
+
+.btn-resena-enviar:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+.resenas-lista { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.resena-item {
+    padding: 1.2rem;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    transition: var(--transicion);
+}
+
+.resena-item:hover { border-color: #e0e0e0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+.resena-header {
+    display: flex; align-items: center;
+    gap: 0.8rem; margin-bottom: 0.8rem;
+}
+
+.resena-avatar {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--secundario), #3ab7b0);
+    color: white; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+}
+
+.resena-meta { flex: 1; }
+.resena-autor   { font-weight: 600; font-size: 0.9rem; display: block; }
+.resena-estrellas { font-size: 0.85rem; }
+.resena-fecha   { font-size: 0.78rem; color: #aaa; white-space: nowrap; }
+.resena-contenido { font-size: 0.9rem; color: #555; line-height: 1.6; }
+
+.ya-reseno { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+.ya-reseno a { color: var(--primario); }
+.sin-resenas { color: #aaa; text-align: center; padding: 2rem; }
+
+/* Relacionados */
+.relacionados-seccion { margin-top: 3rem; }
+.relacionados-seccion h3 { font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--oscuro); }
+
+.relacionados-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.2rem;
+}
+
+.btn-volver {
+    display: inline-block; padding: 0.6rem 1.5rem;
+    background: var(--gris); color: var(--oscuro);
+    border-radius: var(--radio); text-decoration: none;
+    font-weight: 600; transition: var(--transicion);
+    border: 2px solid #e0e0e0;
+}
+
+.btn-volver:hover { background: #e0e0e0; }
+
+@media (max-width: 768px) {
+    .detalle-layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 1.2rem; }
+    .detalle-imagen img { height: 280px; }
+    .detalle-nombre { font-size: 1.4rem; }
+    .detalle-precio { font-size: 1.6rem; }
+}
+</style>
+
+<script>
+// Contador +/-
+document.addEventListener('DOMContentLoaded', function () {
+    const btnMenos = document.getElementById('btn-menos');
+    const btnMas   = document.getElementById('btn-mas');
+    const input    = document.getElementById('cantidad');
+
+    if (btnMenos && btnMas && input) {
+        const max = parseInt(input.max);
+        btnMenos.addEventListener('click', () => { if (parseInt(input.value) > 1) input.value--; });
+        btnMas.addEventListener('click',   () => { if (parseInt(input.value) < max) input.value++; });
+    }
+
+    // Favorito
+    const btnFav = document.getElementById('btn-fav');
+    if (btnFav) {
+        btnFav.addEventListener('click', function () {
+            fetch(`/favorito/${this.dataset.id}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'added') {
+                        btnFav.classList.add('activo');
+                        btnFav.textContent = '❤️ En favoritos';
+                    } else {
+                        btnFav.classList.remove('activo');
+                        btnFav.textContent = '🤍 Agregar a favoritos';
+                    }
+                });
+        });
+    }
+
+    // Selector estrellas
+    const estrellas  = document.querySelectorAll('.estrella');
+    const inputCalif = document.getElementById('input-calif');
+
+    if (estrellas.length && inputCalif) {
+        // Inicia en 5 estrellas activas
+        estrellas.forEach(e => e.classList.add('activa'));
+        estrellas.forEach(e => e.textContent = '⭐');
+
+        estrellas.forEach((estrella, index) => {
+            estrella.addEventListener('click', function () {
+                const valor = parseInt(this.dataset.valor);
+                inputCalif.value = valor;
+                estrellas.forEach((e, i) => {
+                    if (i < valor) {
+                        e.classList.add('activa');
+                        e.textContent = '⭐';
+                    } else {
+                        e.classList.remove('activa');
+                        e.textContent = '☆';
+                    }
+                });
+            });
+
+            estrella.addEventListener('mouseenter', function () {
+                const valor = parseInt(this.dataset.valor);
+                estrellas.forEach((e, i) => {
+                    e.textContent = i < valor ? '⭐' : '☆';
+                });
+            });
+
+            estrella.addEventListener('mouseleave', function () {
+                const valorActual = parseInt(inputCalif.value);
+                estrellas.forEach((e, i) => {
+                    e.textContent = i < valorActual ? '⭐' : '☆';
+                });
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios — Admin FiestaShop{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+
+    <div class="admin-header">
+        <h2>👥 Gestión de Usuarios</h2>
+        <a href="{{ url_for('admin_panel') }}" class="btn-admin-nav">
+            ← Volver al panel
+        </a>
+    </div>
+
+    <div class="admin-seccion">
+        <table class="admin-tabla tabla-usuarios">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Usuario</th>
+                    <th>Email</th>
+                    <th>Registro</th>
+                    <th>Productos</th>
+                    <th>Rol</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.id }}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <div class="usuario-avatar-sm">
+                                {{ usuario.nombre[0].upper() }}
+                            </div>
+                            {{ usuario.nombre }}
+                        </div>
+                    </td>
+                    <td>{{ usuario.email }}</td>
+                    <td>{{ usuario.fecha_registro.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ usuario.productos | length }}</td>
+                    <td>
+                        {% if usuario.es_admin %}
+                        <span class="badge-rol admin">Admin</span>
+                        {% else %}
+                        <span class="badge-rol vendedor">Vendedor</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            {% if usuario.id != current_user.id %}
+                            <form action="{{ url_for('toggle_admin', id=usuario.id) }}"
+                                  method="POST" style="display:inline;">
+                                <button type="submit" class="btn-tabla-accion btn-toggle">
+                                    {% if usuario.es_admin %}
+                                        Quitar admin
+                                    {% else %}
+                                        Hacer admin
+                                    {% endif %}
+                                </button>
+                            </form>
+                            <form action="{{ url_for('admin_eliminar_usuario', id=usuario.id) }}"
+                                  method="POST"
+                                  onsubmit="return confirm('¿Eliminar a {{ usuario.nombre }}?')"
+                                  style="display:inline;">
+                                <button type="submit" class="btn-tabla-accion btn-eliminar-tabla">
+                                    🗑️
+                                </button>
+                            </form>
+                            {% else %}
+                            <span style="color:#aaa; font-size:0.85rem;">Tú</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+.admin-container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.admin-header h2 { font-size: 1.6rem; color: var(--oscuro); }
+
+.btn-admin-nav {
+    padding: 0.6rem 1.2rem;
+    background: var(--secundario);
+    color: white;
+    border-radius: var(--radio);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transicion);
+}
+
+.btn-admin-nav:hover { filter: brightness(1.1); }
+
+.admin-seccion {
+    background: white;
+    border-radius: var(--radio);
+    padding: 1.5rem;
+    box-shadow: var(--sombra);
+    overflow-x: auto;
+}
+
+.admin-tabla { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.admin-tabla th { text-align: left; padding: 0.7rem 0.5rem; color: #999; font-size: 0.8rem; border-bottom: 2px solid #f0f0f0; }
+.admin-tabla td { padding: 0.8rem 0.5rem; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+
+.tabla-usuarios tr:hover td { background: #fafafa; }
+
+.usuario-avatar-sm {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--primario), #FF8E53);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.badge-rol {
+    padding: 0.2rem 0.7rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-rol.admin    { background: #f8d7da; color: #721c24; }
+.badge-rol.vendedor { background: #d4edda; color: #155724; }
+
+.btn-tabla-accion {
+    padding: 0.3rem 0.7rem;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicion);
+}
+
+.btn-toggle { background: #e8f4fd; color: #2980b9; }
+.btn-toggle:hover { background: #2980b9; color: white; }
+
+.btn-eliminar-tabla { background: #fff0f0; color: #e74c3c; }
+.btn-eliminar-tabla:hover { background: #e74c3c; color: white; }
+</style>
+{% endblock %}
