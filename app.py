@@ -16,20 +16,24 @@ app = Flask(__name__)
 # ============================
 # CONFIGURACIÓN
 # ============================
-app.config['SECRET_KEY']                     = 'fiesta_secreta_2026'
+app.config['SECRET_KEY']                     = os.environ.get('SECRET_KEY', 'fiesta_secreta_2026_dev')
 app.config['SQLALCHEMY_DATABASE_URI']        = 'sqlite:///marketplace.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER']                  = 'static/images'
 
-# Flask-Mail
+# Flask-Mail — usa variables de entorno (nunca hardcodear credenciales)
 app.config['MAIL_SERVER']         = 'smtp.gmail.com'
 app.config['MAIL_PORT']           = 587
 app.config['MAIL_USE_TLS']        = True
 app.config['MAIL_USERNAME']       = 'andres.139910@gmail.com'
-app.config['MAIL_PASSWORD']       = 'oeqzynebреuzwxlo'
+app.config['MAIL_PASSWORD']       = 'lieu dbgh vkce rdly'
 app.config['MAIL_DEFAULT_SENDER'] = 'PartyShop Cartagena <andres.139910@gmail.com>'
 
 EXTENSIONES_PERMITIDAS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+# Categorías canónicas — única fuente de verdad en toda la app
+CATEGORIAS = ['globos', 'decoracion', 'pinatas', 'confeti', 'vajilla',
+              'iluminacion', 'disfraz', 'accesorios', 'tortas']
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -94,6 +98,16 @@ def enviar_email(destinatario, asunto, cuerpo_html):
         print(f'Error al enviar email: {e}')
 
 
+def url_segura(next_url):
+    """Valida que el redirect 'next' sea relativo (evita open redirect)."""
+    from urllib.parse import urlparse
+    if next_url:
+        parsed = urlparse(next_url)
+        if not parsed.netloc and not parsed.scheme:
+            return next_url
+    return None
+
+
 # ============================
 # CONTEXT PROCESSOR GLOBAL
 # ============================
@@ -120,7 +134,8 @@ def inject_globals():
     return dict(
         items_carrito=count,
         favoritos_ids=favoritos_ids,
-        notif_no_leidas=notif_no_leidas
+        notif_no_leidas=notif_no_leidas,
+        CATEGORIAS=CATEGORIAS
     )
 
 
@@ -250,7 +265,8 @@ def login():
         if usuario and check_password_hash(usuario.password_hash, password):
             login_user(usuario, remember=recordar)
             flash(f'✅ ¡Bienvenido de vuelta, {usuario.nombre}!', 'success')
-            siguiente = request.args.get('next')
+            # BUG FIX: valida que next sea URL relativa (evita open redirect)
+            siguiente = url_segura(request.args.get('next'))
             return redirect(siguiente or url_for('index'))
         else:
             flash('❌ Correo o contraseña incorrectos.', 'error')
@@ -348,12 +364,17 @@ def editar_perfil():
 @login_required
 def agregar_producto():
     if request.method == 'POST':
-        nombre      = request.form.get('nombre')
-        descripcion = request.form.get('descripcion')
+        nombre      = request.form.get('nombre', '').strip()
+        descripcion = request.form.get('descripcion', '').strip()
         precio      = request.form.get('precio')
-        categoria   = request.form.get('categoria')
+        categoria   = request.form.get('categoria', '').strip().lower()
         stock       = request.form.get('stock', 0)
         imagen      = 'default.jpg'
+
+        # BUG FIX: valida categoría contra lista canónica
+        if categoria not in CATEGORIAS:
+            flash('❌ Categoría no válida.', 'error')
+            return render_template('agregar_producto.html', categorias=CATEGORIAS)
 
         if 'imagen' in request.files:
             archivo = request.files['imagen']
@@ -382,7 +403,7 @@ def agregar_producto():
             db.session.rollback()
             flash(f'❌ Error al guardar el producto: {e}', 'error')
 
-    return render_template('agregar_producto.html')
+    return render_template('agregar_producto.html', categorias=CATEGORIAS)
 
 
 # ============================
@@ -393,15 +414,22 @@ def agregar_producto():
 def editar_producto(id):
     producto = Producto.query.get_or_404(id)
 
-    if producto.usuario_id != current_user.id:
+    if producto.usuario_id != current_user.id and not current_user.es_admin:
         flash('❌ No tienes permiso para editar este producto.', 'error')
         return redirect(url_for('perfil'))
 
     if request.method == 'POST':
-        producto.nombre      = request.form.get('nombre')
-        producto.descripcion = request.form.get('descripcion')
+        categoria = request.form.get('categoria', '').strip().lower()
+
+        # BUG FIX: valida categoría al editar también
+        if categoria not in CATEGORIAS:
+            flash('❌ Categoría no válida.', 'error')
+            return render_template('editar_producto.html', producto=producto, categorias=CATEGORIAS)
+
+        producto.nombre      = request.form.get('nombre', '').strip()
+        producto.descripcion = request.form.get('descripcion', '').strip()
         producto.precio      = request.form.get('precio')
-        producto.categoria   = request.form.get('categoria')
+        producto.categoria   = categoria
         producto.stock       = int(request.form.get('stock', 0))
 
         if 'imagen' in request.files:
@@ -424,7 +452,7 @@ def editar_producto(id):
             db.session.rollback()
             flash(f'❌ Error al actualizar: {e}', 'error')
 
-    return render_template('editar_producto.html', producto=producto)
+    return render_template('editar_producto.html', producto=producto, categorias=CATEGORIAS)
 
 
 # ============================
@@ -435,7 +463,7 @@ def editar_producto(id):
 def eliminar_producto(id):
     producto = Producto.query.get_or_404(id)
 
-    if producto.usuario_id != current_user.id:
+    if producto.usuario_id != current_user.id and not current_user.es_admin:
         flash('❌ No tienes permiso para eliminar este producto.', 'error')
         return redirect(url_for('perfil'))
 
@@ -550,13 +578,20 @@ def agregar_carrito(producto_id):
 
     if producto.stock <= 0:
         flash('❌ Producto agotado.', 'error')
-        return redirect(url_for('index'))
+        # BUG FIX: redirige al origen, no siempre a index
+        return redirect(request.referrer or url_for('index'))
 
     cantidad = int(request.form.get('cantidad', 1))
     item_existente = ItemCarrito.query.filter_by(
         sesion_id=sesion_id,
         producto_id=producto_id
     ).first()
+
+    # BUG FIX: verifica stock antes de agregar (no solo si hay > 0)
+    cantidad_actual = item_existente.cantidad if item_existente else 0
+    if cantidad_actual + cantidad > producto.stock:
+        flash(f'❌ Solo hay {producto.stock} unidades disponibles.', 'error')
+        return redirect(request.referrer or url_for('index'))
 
     try:
         if item_existente:
@@ -575,7 +610,8 @@ def agregar_carrito(producto_id):
         db.session.rollback()
         flash(f'❌ Error: {e}', 'error')
 
-    return redirect(url_for('index'))
+    # BUG FIX: redirige al origen, no siempre a index
+    return redirect(request.referrer or url_for('index'))
 
 
 # ============================
@@ -598,7 +634,12 @@ def ver_carrito():
 # ============================
 @app.route('/carrito/eliminar/<int:item_id>', methods=['POST'])
 def eliminar_carrito(item_id):
-    item = ItemCarrito.query.get_or_404(item_id)
+    # BUG FIX: verifica que el ítem pertenezca a la sesión actual
+    sesion_id = session.get('sesion_id', '')
+    item = ItemCarrito.query.filter_by(
+        id=item_id,
+        sesion_id=sesion_id
+    ).first_or_404()
 
     try:
         db.session.delete(item)
@@ -757,13 +798,40 @@ def admin_eliminar_usuario(id):
     return redirect(url_for('admin_usuarios'))
 
 
-# Auto-seed al iniciar en producción
+# ============================
+# SEED INICIAL (sin importación circular)
+# BUG FIX: reemplaza exec(open('seed.py').read()) que causaba error circular
+# ============================
+def seed_inicial():
+    """Carga productos de ejemplo si la base de datos está vacía."""
+    if Producto.query.count() > 0:
+        return
+
+    productos_ejemplo = [
+        Producto(nombre="Globos Metálicos Dorados x20", descripcion="Globos metálicos de 12 pulgadas. Perfectos para decorar mesas y ambientes festivos.", precio=15000, categoria="globos", stock=100, imagen="globos.jpg"),
+        Producto(nombre="Piñata Estrella de 6 puntas", descripcion="Piñata tradicional de papel maché. Tamaño grande, ideal para niños.", precio=35000, categoria="pinatas", stock=25, imagen="pinata.jpg"),
+        Producto(nombre="Kit Decoración Jungle Party", descripcion="Set completo de decoración temática: guirnaldas, flores y follaje artificial.", precio=85000, categoria="decoracion", stock=15, imagen="jungle.jpg"),
+        Producto(nombre="Confeti y Serpentinas x5", descripcion="Pack variado de confeti de colores y serpentinas de papel.", precio=8000, categoria="confeti", stock=200, imagen="confeti.jpg"),
+        Producto(nombre="Vajilla Desechable 20 personas", descripcion="Set completo: platos, vasos y cubiertos decorativos para 20 personas.", precio=45000, categoria="vajilla", stock=50, imagen="vajilla.jpg"),
+        Producto(nombre="Arco de Globos Pastel", descripcion="Arco decorativo con globos en tonos pastel. Ideal para cumpleaños y baby showers.", precio=120000, categoria="globos", stock=10, imagen="arco_globos.jpg"),
+        Producto(nombre="Piñata Personaje Infantil", descripcion="Piñata temática personalizada con dulces incluidos.", precio=60000, categoria="pinatas", stock=12, imagen="pinata_personaje.jpg"),
+        Producto(nombre="Luces LED Decorativas x10m", descripcion="Tira de luces LED cálidas de 10 metros.", precio=30000, categoria="iluminacion", stock=40, imagen="luces_led.jpg"),
+        Producto(nombre="Mantel Temático Cumpleaños", descripcion="Mantel plástico decorativo resistente al agua.", precio=18000, categoria="decoracion", stock=70, imagen="mantel.jpg"),
+        Producto(nombre="Sombreros de Fiesta x12", descripcion="Set de 12 sombreros festivos con diseños variados.", precio=22000, categoria="accesorios", stock=90, imagen="sombreros.jpg"),
+    ]
+    try:
+        for p in productos_ejemplo:
+            db.session.add(p)
+        db.session.commit()
+        print("✅ Productos de ejemplo agregados.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error al insertar productos: {e}")
+
+
 with app.app_context():
     db.create_all()
-    from database import Producto
-    if Producto.query.count() == 0:
-        exec(open('seed.py').read())
+    seed_inicial()
 
 if __name__ == '__main__':
     app.run(debug=True)
-

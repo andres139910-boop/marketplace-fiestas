@@ -12,61 +12,88 @@
 
     <nav class="navbar">
         <div class="nav-container">
+
             <a href="{{ url_for('index') }}" class="logo">
-                🎊 <span>PartyShop Cartagena</span>
+                🎊 <span>PartyShop</span>
             </a>
 
             <form class="barra-busqueda" action="{{ url_for('index') }}" method="GET">
                 <input type="text" name="q"
-                       placeholder="Buscar productos para tu fiesta..."
-                       value="{{ request.args.get('q', '') }}">
+                       placeholder="Buscar productos..."
+                       value="{{ request.args.get('q', '') }}"
+                       autocomplete="off">
                 <button type="submit"><i class="fas fa-search"></i></button>
             </form>
 
-            <div class="nav-links">
+            <!-- Carrito siempre visible (fuera del menú hamburguesa) -->
+            <a href="{{ url_for('ver_carrito') }}" class="btn-carrito btn-carrito-nav" title="Mi carrito">
+                <i class="fas fa-shopping-cart"></i>
+                {% if items_carrito > 0 %}
+                <span class="badge">{{ items_carrito }}</span>
+                {% endif %}
+            </a>
+
+            <!-- Botón hamburguesa -->
+            <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <!-- Menú de links -->
+            <div class="nav-links" id="nav-links" role="navigation">
+
+                <!-- Botón cerrar (visible solo en móvil) -->
+                <button class="nav-cerrar" id="nav-cerrar" aria-label="Cerrar menú">✕</button>
+
                 {% if current_user.is_authenticated %}
                     {% if current_user.es_admin %}
                     <a href="{{ url_for('admin_panel') }}" class="btn-admin-link"
-                       title="Panel Admin">
+                       title="Panel Admin" onclick="cerrarMenu()">
                         📊
                     </a>
                     {% endif %}
 
-                    <!-- Notificaciones -->
                     <a href="{{ url_for('notificaciones') }}" class="btn-notif"
-                       title="Notificaciones">
+                       title="Notificaciones" onclick="cerrarMenu()">
                         🔔
                         {% if notif_no_leidas > 0 %}
                         <span class="badge notif-badge">{{ notif_no_leidas }}</span>
                         {% endif %}
                     </a>
 
-                    <a href="{{ url_for('agregar_producto') }}" class="btn-agregar">
+                    <a href="{{ url_for('agregar_producto') }}" class="btn-agregar" onclick="cerrarMenu()">
                         <i class="fas fa-plus"></i> Vender
                     </a>
+
                     <a href="{{ url_for('perfil') }}" class="btn-perfil"
-                       title="{{ current_user.nombre }}">
+                       title="{{ current_user.nombre }}" onclick="cerrarMenu()">
                         {{ current_user.nombre[0].upper() }}
                     </a>
+
                     <a href="{{ url_for('logout') }}" class="btn-logout"
                        title="Cerrar sesión">
                         <i class="fas fa-sign-out-alt"></i>
                     </a>
+
                 {% else %}
-                    <a href="{{ url_for('login') }}" class="btn-agregar">
+                    <a href="{{ url_for('login') }}" class="btn-agregar" onclick="cerrarMenu()">
                         Iniciar sesión
                     </a>
-                    <a href="{{ url_for('registro') }}" class="btn-registro-nav">
+                    <a href="{{ url_for('registro') }}" class="btn-registro-nav" onclick="cerrarMenu()">
                         Registrarse
                     </a>
                 {% endif %}
 
-                <a href="{{ url_for('ver_carrito') }}" class="btn-carrito">
+                <!-- Carrito en el menú (solo desktop; en móvil ya está arriba) -->
+                <a href="{{ url_for('ver_carrito') }}" class="btn-carrito btn-carrito-menu"
+                   onclick="cerrarMenu()">
                     <i class="fas fa-shopping-cart"></i>
                     {% if items_carrito > 0 %}
                     <span class="badge">{{ items_carrito }}</span>
                     {% endif %}
                 </a>
+
             </div>
         </div>
     </nav>
@@ -103,7 +130,7 @@
             </div>
             <div class="footer-contacto">
                 <h4>Contacto</h4>
-                <p><i class="fas fa-envelope"></i> info@PartyShop_Cartagena.co</p>
+                <p><i class="fas fa-envelope"></i> info@partyshop.co</p>
                 <p><i class="fas fa-map-marker-alt"></i> Cartagena, Colombia</p>
             </div>
         </div>
@@ -113,5 +140,69 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+    // ============================
+    // MENÚ HAMBURGUESA
+    // ============================
+    const toggle   = document.getElementById('nav-toggle');
+    const navLinks = document.getElementById('nav-links');
+    const cerrar   = document.getElementById('nav-cerrar');
+
+    function abrirMenu() {
+        navLinks.classList.add('abierto');
+        toggle.classList.add('abierto');
+        toggle.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarMenu() {
+        navLinks.classList.remove('abierto');
+        toggle.classList.remove('abierto');
+        toggle.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+    }
+
+    toggle.addEventListener('click', () => {
+        navLinks.classList.contains('abierto') ? cerrarMenu() : abrirMenu();
+    });
+
+    cerrar.addEventListener('click', cerrarMenu);
+
+    // Cerrar al hacer clic fuera del menú
+    navLinks.addEventListener('click', (e) => {
+        if (e.target === navLinks) cerrarMenu();
+    });
+
+    // Cerrar con tecla Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cerrarMenu();
+    });
+
+    // ============================
+    // CARRITO: visibilidad por breakpoint
+    // ============================
+    // En móvil se muestra btn-carrito-nav (afuera del menú)
+    // En desktop se muestra btn-carrito-menu (dentro del menú)
+    function ajustarCarrito() {
+        const esMobile = window.innerWidth <= 640;
+        document.querySelectorAll('.btn-carrito-nav').forEach(el => {
+            el.style.display = esMobile ? 'flex' : 'none';
+        });
+        document.querySelectorAll('.btn-carrito-menu').forEach(el => {
+            el.style.display = esMobile ? 'none' : 'flex';
+        });
+    }
+
+    ajustarCarrito();
+    window.addEventListener('resize', ajustarCarrito);
+    </script>
+
+    <style>
+    /* Estilos inline solo para los dos botones de carrito (lógica JS arriba) */
+    .btn-carrito-nav  { display: none; } /* JS lo muestra en móvil */
+    .btn-carrito-menu { display: flex; } /* visible en desktop dentro del menú */
+    </style>
+
 </body>
 </html>
