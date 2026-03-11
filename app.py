@@ -2,7 +2,7 @@
 import os
 import uuid
 from flask import (Flask, render_template, request, redirect,
-                   url_for, flash, session, jsonify)
+                   url_for, flash, session, jsonify, abort)
 from flask_login import (LoginManager, login_user, logout_user,
                          login_required, current_user)
 from flask_mail import Mail, Message
@@ -16,18 +16,21 @@ app = Flask(__name__)
 # ============================
 # CONFIGURACIÓN
 # ============================
-app.config['SECRET_KEY']                     = os.environ.get('SECRET_KEY', 'fiesta_secreta_2026_dev')
+app.config['SECRET_KEY']                     = os.environ.get('SECRET_KEY') or os.urandom(32)
 app.config['SQLALCHEMY_DATABASE_URI']        = 'sqlite:///marketplace.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER']                  = 'static/images'
 
-# Flask-Mail — usa variables de entorno (nunca hardcodear credenciales)
-app.config['MAIL_SERVER']         = 'smtp.gmail.com'
-app.config['MAIL_PORT']           = 587
-app.config['MAIL_USE_TLS']        = True
-app.config['MAIL_USERNAME']       = 'andres.139910@gmail.com'
-app.config['MAIL_PASSWORD']       = 'lieu dbgh vkce rdly'
-app.config['MAIL_DEFAULT_SENDER'] = 'PartyShop Cartagena <andres.139910@gmail.com>'
+# Flask-Mail — credenciales siempre por variables de entorno
+app.config['MAIL_SERVER']         = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT']           = int(os.environ.get('MAIL_PORT', '587'))
+app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
+app.config['MAIL_USERNAME']       = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get(
+    'MAIL_DEFAULT_SENDER',
+    'PartyShop Cartagena <no-reply@partyshop.local>'
+)
 
 EXTENSIONES_PERMITIDAS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -90,6 +93,10 @@ def crear_notificacion(usuario_id, mensaje, tipo='info', url=None):
 
 
 def enviar_email(destinatario, asunto, cuerpo_html):
+    if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+        app.logger.warning('Flask-Mail no configurado: faltan MAIL_USERNAME/MAIL_PASSWORD.')
+        return
+
     try:
         msg = Message(asunto, recipients=[destinatario])
         msg.html = cuerpo_html
@@ -106,6 +113,24 @@ def url_segura(next_url):
         if not parsed.netloc and not parsed.scheme:
             return next_url
     return None
+
+
+def obtener_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = uuid.uuid4().hex
+    return session['csrf_token']
+
+
+@app.before_request
+def proteger_csrf():
+    if request.method in ('GET', 'HEAD', 'OPTIONS', 'TRACE'):
+        return
+
+    token_sesion = session.get('csrf_token')
+    token_request = request.form.get('csrf_token') or request.headers.get('X-CSRFToken')
+
+    if not token_sesion or not token_request or token_request != token_sesion:
+        abort(400, description='CSRF token invalido')
 
 
 # ============================
@@ -135,7 +160,8 @@ def inject_globals():
         items_carrito=count,
         favoritos_ids=favoritos_ids,
         notif_no_leidas=notif_no_leidas,
-        CATEGORIAS=CATEGORIAS
+        CATEGORIAS=CATEGORIAS,
+        csrf_token=obtener_csrf_token()
     )
 
 
@@ -366,10 +392,21 @@ def agregar_producto():
     if request.method == 'POST':
         nombre      = request.form.get('nombre', '').strip()
         descripcion = request.form.get('descripcion', '').strip()
-        precio      = request.form.get('precio')
+        precio_raw  = request.form.get('precio', '').strip()
         categoria   = request.form.get('categoria', '').strip().lower()
-        stock       = request.form.get('stock', 0)
+        stock_raw   = request.form.get('stock', '0').strip()
         imagen      = 'default.jpg'
+
+        try:
+            precio = float(precio_raw)
+            stock = int(stock_raw)
+        except (TypeError, ValueError):
+            flash('❌ Precio o stock no válidos.', 'error')
+            return render_template('agregar_producto.html', categorias=CATEGORIAS)
+
+        if precio < 0 or stock < 0:
+            flash('❌ Precio y stock deben ser valores positivos.', 'error')
+            return render_template('agregar_producto.html', categorias=CATEGORIAS)
 
         # BUG FIX: valida categoría contra lista canónica
         if categoria not in CATEGORIAS:
@@ -389,7 +426,7 @@ def agregar_producto():
             descripcion=descripcion,
             precio=precio,
             categoria=categoria,
-            stock=int(stock),
+            stock=stock,
             imagen=imagen,
             usuario_id=current_user.id
         )
@@ -420,6 +457,19 @@ def editar_producto(id):
 
     if request.method == 'POST':
         categoria = request.form.get('categoria', '').strip().lower()
+        precio_raw = request.form.get('precio', '').strip()
+        stock_raw = request.form.get('stock', '0').strip()
+
+        try:
+            precio = float(precio_raw)
+            stock = int(stock_raw)
+        except (TypeError, ValueError):
+            flash('❌ Precio o stock no válidos.', 'error')
+            return render_template('editar_producto.html', producto=producto, categorias=CATEGORIAS)
+
+        if precio < 0 or stock < 0:
+            flash('❌ Precio y stock deben ser valores positivos.', 'error')
+            return render_template('editar_producto.html', producto=producto, categorias=CATEGORIAS)
 
         # BUG FIX: valida categoría al editar también
         if categoria not in CATEGORIAS:
@@ -428,9 +478,9 @@ def editar_producto(id):
 
         producto.nombre      = request.form.get('nombre', '').strip()
         producto.descripcion = request.form.get('descripcion', '').strip()
-        producto.precio      = request.form.get('precio')
+        producto.precio      = precio
         producto.categoria   = categoria
-        producto.stock       = int(request.form.get('stock', 0))
+        producto.stock       = stock
 
         if 'imagen' in request.files:
             archivo = request.files['imagen']
@@ -529,7 +579,10 @@ def agregar_resena(id):
         return redirect(url_for('detalle_producto', id=id))
 
     contenido    = request.form.get('contenido', '').strip()
-    calificacion = int(request.form.get('calificacion', 5))
+    try:
+        calificacion = int(request.form.get('calificacion', 5))
+    except (TypeError, ValueError):
+        calificacion = 5
 
     if not contenido:
         flash('❌ La reseña no puede estar vacía.', 'error')
@@ -581,7 +634,16 @@ def agregar_carrito(producto_id):
         # BUG FIX: redirige al origen, no siempre a index
         return redirect(request.referrer or url_for('index'))
 
-    cantidad = int(request.form.get('cantidad', 1))
+    try:
+        cantidad = int(request.form.get('cantidad', 1))
+    except (TypeError, ValueError):
+        flash('❌ Cantidad no válida.', 'error')
+        return redirect(request.referrer or url_for('index'))
+
+    if cantidad < 1:
+        flash('❌ La cantidad debe ser mayor o igual a 1.', 'error')
+        return redirect(request.referrer or url_for('index'))
+
     item_existente = ItemCarrito.query.filter_by(
         sesion_id=sesion_id,
         producto_id=producto_id
@@ -834,4 +896,4 @@ with app.app_context():
     seed_inicial()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=os.environ.get('FLASK_DEBUG', '0') == '1')

@@ -1,6 +1,40 @@
 // main.js — Interactividad y animaciones del marketplace
 
 document.addEventListener('DOMContentLoaded', function () {
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+    // CSRF global: agrega token a formularios POST y peticiones fetch mutables.
+    if (csrfToken) {
+        document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function (form) {
+            if (!form.querySelector('input[name="csrf_token"]')) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'csrf_token';
+                hidden.value = csrfToken;
+                form.appendChild(hidden);
+            }
+        });
+
+        if (window.fetch && !window.__csrfFetchPatched) {
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function (resource, options = {}) {
+                const method = (options.method || 'GET').toUpperCase();
+                const needsToken = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
+                if (needsToken) {
+                    const headers = new Headers(options.headers || {});
+                    if (!headers.has('X-CSRFToken')) {
+                        headers.set('X-CSRFToken', csrfToken);
+                    }
+                    options.headers = headers;
+                }
+
+                return originalFetch(resource, options);
+            };
+            window.__csrfFetchPatched = true;
+        }
+    }
 
     // ============================
     // VISTA PREVIA DE IMAGEN AL SUBIR

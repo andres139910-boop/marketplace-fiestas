@@ -41,7 +41,7 @@
         <div class="form-grupo">
             <label>Categoría</label>
             <select name="categoria" required>
-                {% for cat in ['globos', 'decoracion', 'pinatas', 'confeti', 'disfraces', 'iluminacion', 'otros'] %}
+                {% for cat in categorias %}
                 <option value="{{ cat }}"
                     {% if producto.categoria == cat %}selected{% endif %}>
                     {{ cat | capitalize }}

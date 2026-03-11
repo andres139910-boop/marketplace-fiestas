@@ -27,8 +27,13 @@
 
         <div>
             <label><strong>Categoría</strong></label>
-            <input type="text" name="categoria" placeholder="globos, decoracion, vajilla..."
-                   style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem;">
+            <select name="categoria" required
+                    style="width:100%; padding:0.6rem; border:2px solid #e0e0e0; border-radius:8px; margin-top:0.3rem; background:white;">
+                <option value="">Selecciona una categoría</option>
+                {% for cat in categorias %}
+                <option value="{{ cat }}">{{ cat | capitalize }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <div>
